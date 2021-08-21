@@ -15,7 +15,7 @@ rabi_result = simulated_pulse_sequence.run_simulation(
         "RabiFlopping:RabiFlopping.duration": {
             "ty": "RangeScan",
             "start": 0,
-            "stop": 100e-6,
+            "stop": 20e-6,
             "npoints": 20
         },
     },
