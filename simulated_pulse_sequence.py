@@ -306,6 +306,12 @@ class PulseSequence:
 
         # Import the Julia simulation function
         try:
+            # Check to see if a precompiled system image exists
+            path_to_sys_so = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sys.so")
+            if os.path.exists(path_to_sys_so):
+                from julia import Julia
+                _ = Julia(sysimage=path_to_sys_so)
+
             path_to_simulate_jl = os.path.join(os.path.dirname(os.path.abspath(__file__)), "simulate.jl")
             from julia import Main
             Main.include(path_to_simulate_jl)
