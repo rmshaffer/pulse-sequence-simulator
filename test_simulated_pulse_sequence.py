@@ -1,6 +1,6 @@
 import simulated_pulse_sequence
 
-simulated_pulse_sequence.run_simulation(
+result = simulated_pulse_sequence.run_simulation(
     "sequences/rabi_flopping.py",
     "RabiFlopping",
     {
@@ -13,3 +13,5 @@ simulated_pulse_sequence.run_simulation(
         },
     },
 )
+
+print(result)

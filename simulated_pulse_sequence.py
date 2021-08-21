@@ -86,7 +86,7 @@ def run_simulation(file_path, class_, argument_values):
         pulse_sequence.set_submission_arguments(argument_values)
         pulse_sequence.simulate()
 
-        print("RESULT:", pulse_sequence.data)
+        return pulse_sequence.data
     except:
         logger.error("Error simulating pulse sequence" + traceback.format_exc())
 
