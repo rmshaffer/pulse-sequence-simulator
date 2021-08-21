@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Simulation data
+data/
+
+# VS Code settings
+.vscode/
