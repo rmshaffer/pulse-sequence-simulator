@@ -3,6 +3,7 @@ FROM continuumio/miniconda3
 # Install Julia:
 ARG julia_version=1.5.4
 RUN apt-get update && apt-get install -y curl
+RUN apt-get update && apt-get install -y gcc
 RUN curl https://raw.githubusercontent.com/JuliaCI/install-julia/master/install-julia.sh | sed -E "s/\bsudo +//g" | bash -s $julia_version
 ENV PATH="/usr/local/bin/julia:${PATH}"
 
@@ -46,3 +47,13 @@ RUN julia -e 'using Pkg; Pkg.update()' && \
 # Install and configure pyjulia:
 RUN pip install julia
 RUN python -c 'from julia import install; install()'
+
+# Copy the context into the image:
+COPY . /repo
+WORKDIR /repo
+
+# Pre-compile a Julia sysimage for PyCall to work properly:
+RUN python -m julia.sysimage sys.so
+
+# Run the test script to make sure everything works:
+RUN python ./test_simulated_pulse_sequence.py
