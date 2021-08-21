@@ -22,7 +22,7 @@ parameter_vault = {
         "channel_729": "729G",
         "rabi_excitation_duration": 0e-6,
         "line_selection": "S-1/2D-1/2",
-        "single_pass_amplitude": 0.0,
+        "single_pass_amplitude": 1.0,
         "single_pass_att": 0.0,
     },
     "IonsOnCamera": {
@@ -42,7 +42,7 @@ parameter_vault = {
     },
     "RabiFlopping": {
         "line_selection": "S-1/2D-1/2",
-        "amplitude_729": 0.0,
+        "amplitude_729": 1.0,
         "att_729": 0.0,
         "channel_729": "729G",
         "duration": 5e-6,
