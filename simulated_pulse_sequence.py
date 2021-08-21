@@ -646,9 +646,9 @@ class PulseSequence:
         for i in range(len(values)):
             # make sure the values are between min and max
             if min is not None:
-                values[i] = max(min, amps[i])
+                values[i] = max(min, values[i])
             if max is not None:
-                values[i] = min(max, amps[i])
+                values[i] = min(max, values[i])
         return values
 
     def make_random_amplitudes(self, n, mean, std):
