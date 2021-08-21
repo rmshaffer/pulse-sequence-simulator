@@ -1,7 +1,7 @@
 from artiq.experiment import *
-from subsequences.doppler_cooling import DopplerCooling
-from subsequences.optical_pumping import OpticalPumping
-from subsequences.sideband_cooling import SidebandCooling
+from .doppler_cooling import DopplerCooling
+from .optical_pumping import OpticalPumping
+from .sideband_cooling import SidebandCooling
 
 class StatePreparation:
     enable_optical_pumping="StatePreparation.optical_pumping_enable"

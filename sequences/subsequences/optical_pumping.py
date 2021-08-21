@@ -1,7 +1,7 @@
 from artiq.experiment import *
-from subsequences.optical_pumping_pulsed import OpticalPumpingPulsed
-from subsequences.optical_pumping_continuous import OpticalPumpingContinuous
-from subsequences.aux_optical_pumping import AuxOpticalPumping
+from .optical_pumping_pulsed import OpticalPumpingPulsed
+from .optical_pumping_continuous import OpticalPumpingContinuous
+from .aux_optical_pumping import AuxOpticalPumping
 
 class OpticalPumping:
     enable_pulsed_optical_pumping="StatePreparation.pulsed_optical_pumping"

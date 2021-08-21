@@ -1,13 +1,11 @@
-from artiq.dashboard.drift_tracker import client_config as dt_config
 from artiq.language import core as core_language
 from sipyco.pc_rpc import Client
 from datetime import datetime
 from easydict import EasyDict as edict
 import importlib
 import importlib.machinery
+import importlib.util
 import json
-import labrad
-from labrad.units import WithUnit
 import logging
 import numpy as np
 import os
@@ -17,9 +15,6 @@ import sys
 logger = logging.getLogger(__name__)
 
 def unitless(param):
-    if isinstance(param, WithUnit):
-        param = param.inBaseUnits()
-        param = param[param.units]
     return param
 
 #
@@ -27,11 +22,6 @@ def unitless(param):
 #
 def run_simulation(file_path, class_, argument_values):
     try:
-        # for development convenience, always reload the latest simulated_pulse_sequence.py
-        sim_mod_name = "simulated_pulse_sequence"
-        if sim_mod_name in sys.modules:
-            importlib.reload(sys.modules[sim_mod_name])
-
         # define a function to import a modified source file
         def modify_and_import(module_name, path, modification_func):
             # adapted from https://stackoverflow.com/questions/41858147/how-to-modify-imported-source-code-on-the-fly
@@ -46,22 +36,25 @@ def run_simulation(file_path, class_, argument_values):
             return module
 
         # import all of the subsequences and strip out the @kernel decorators
-        subsequences_folder = os.path.join(os.path.expanduser("~"), "artiq-work", "subsequences")
-        for path, subdirs, files in os.walk(subsequences_folder):
-            for filename in files:
-                filename_without_extension, extension = os.path.splitext(filename)
-                if extension == ".py":
-                    try:
-                        module_name = "simulated_subsequences." + filename_without_extension
-                        experiment_file_full_path = os.path.join(path, filename)
-                        modify_and_import(module_name, experiment_file_full_path, lambda src:
-                            src.replace("@kernel", ""))
-                    except:
-                        logger.error("Error importing subsequence " + filename_without_extension + ": " + traceback.format_exc())
-                        continue
+        subsequences_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sequences", "subsequences")
+        num_attempts = 2 # some may fail on first try due to dependencies, but will succeed eventually
+        for attempt in range(1, num_attempts+1):
+            for path, subdirs, files in os.walk(subsequences_folder):
+                for filename in files:
+                    filename_without_extension, extension = os.path.splitext(filename)
+                    if extension == ".py":
+                        try:
+                            module_name = "simulated_subsequences." + filename_without_extension
+                            experiment_file_full_path = os.path.join(path, filename)
+                            modify_and_import(module_name, experiment_file_full_path, lambda src:
+                                src.replace("@kernel", ""))
+                        except:
+                            if attempt == num_attempts:
+                                logger.error("Error importing subsequence " + filename_without_extension + ": " + traceback.format_exc())
+                            continue
 
         # import all of the auto calibration sequences and strip out the @kernel decorators
-        auto_calibration_sequences_folder = os.path.join(os.path.expanduser("~"), "artiq-work", "auto_calibration", "sequences")
+        auto_calibration_sequences_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "auto_calibration", "sequences")
         for path, subdirs, files in os.walk(auto_calibration_sequences_folder):
             for filename in files:
                 filename_without_extension, extension = os.path.splitext(filename)
@@ -72,6 +65,7 @@ def run_simulation(file_path, class_, argument_values):
                         modify_and_import(module_name, experiment_file_full_path, lambda src:
                             src.replace("from pulse_sequence", "from simulated_pulse_sequence")
                             .replace("from subsequences.", "from simulated_subsequences.")
+                            .replace("from .", "from simulated_subsequences.")
                             .replace("from auto_calibration.sequences.", "from auto_calibration.simulated_sequences.")
                             .replace("@kernel", ""))
                     except:
@@ -79,10 +73,11 @@ def run_simulation(file_path, class_, argument_values):
                         continue
 
         # load the experiment source and make the necessary modifications
-        file_path = os.path.join(os.path.expanduser("~"), "artiq-work", file_path)
+        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), file_path)
         mod = modify_and_import(class_, file_path, lambda src: 
             src.replace("from pulse_sequence", "from simulated_pulse_sequence")
             .replace("from subsequences.", "from simulated_subsequences.")
+            .replace("from .", "from simulated_subsequences.")
             .replace("from auto_calibration.sequences.", "from auto_calibration.simulated_sequences.")
             .replace("@kernel", ""))
 
@@ -90,6 +85,8 @@ def run_simulation(file_path, class_, argument_values):
         pulse_sequence = getattr(mod, class_)()
         pulse_sequence.set_submission_arguments(argument_values)
         pulse_sequence.simulate()
+
+        print("RESULT:", pulse_sequence.data)
     except:
         logger.error("Error simulating pulse sequence" + traceback.format_exc())
 
@@ -188,7 +185,7 @@ class PulseSequence:
         self.rcg_tabs[self.sequence_name] = dict()
         self.start_time = datetime.now()
         self.timestamp = self.start_time.strftime("%H%M_%S")
-        self.dir = os.path.join(os.path.expanduser("~"), "data", "simulation",
+        self.dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "simulation",
                                 datetime.now().strftime("%Y-%m-%d"), self.sequence_name)
         os.makedirs(self.dir, exist_ok=True)
         os.chdir(self.dir)
@@ -532,13 +529,13 @@ class PulseSequence:
             self.logger = Client("::1", 3289, "simulation_logger")
         except:
             self.logger = logging.getLogger("** SIMULATION **")
-            self.logger.warning("Failed to connect to remote logger", exc_info=True)
+            #self.logger.warning("Failed to connect to remote logger", exc_info=True)
 
         if not self.grapher:
             try:
                 self.grapher = Client("::1", 3286, "rcg")
             except:
-                self.logger.warning("Failed to connect to RCG grapher", exc_info=True)
+                #self.logger.warning("Failed to connect to RCG grapher", exc_info=True)
                 self.grapher = None
 
         if not self.visualizer:
@@ -546,7 +543,7 @@ class PulseSequence:
                 self.visualizer = Client("::1", 3289, "pulse_sequence_visualizer")
                 pass
             except:
-                self.logger.warning("Failed to connect to pulse sequence visualizer", exc_info=True)
+                #self.logger.warning("Failed to connect to pulse sequence visualizer", exc_info=True)
                 self.visualizer = None
 
     def setup_carriers(self):
@@ -557,13 +554,12 @@ class PulseSequence:
         for idx, name in enumerate(self.carrier_names):
             self.carrier_dict[name] = idx
 
-        global_cxn = labrad.connect(dt_config.global_address,
-                                    password=dt_config.global_password,
-                                    tls_mode="off")
-        sd_tracker = global_cxn.sd_tracker_global
+        self.current_line_center = self.p.DriftTracker.current_line_center
+        self.current_b_field = self.p.DriftTracker.current_b_field
 
-        self.current_line_center = float(unitless(sd_tracker.get_current_center(dt_config.client_name)))
-        current_lines = sd_tracker.get_current_lines(dt_config.client_name)
+        import sd_calculator
+        current_lines = sd_calculator.get_sd_transition_energies(
+            self.current_b_field, self.current_line_center)
         _list = [0.] * 10
         for carrier, frequency in current_lines:
             abs_freq = unitless(frequency)
@@ -573,8 +569,6 @@ class PulseSequence:
                     _list[i] = abs_freq - self.current_line_center
                     break
         self.carrier_values = _list
-
-        self.current_b_field = float(unitless(sd_tracker.get_current_b_local(dt_config.client_name)['gauss']))
 
     def get_trap_frequency(self, name):
         freq = 0.
@@ -678,8 +672,8 @@ class PulseSequence:
         pass
 
     def start_noisy_single_pass(self, phase_ref_time, freq_noise=False,
-        freq_sp=WithUnit(80, 'MHz'), amp_sp=1.0, att_sp=8.0, phase_sp=0.,
-        use_bichro=False, freq_sp_bichro=WithUnit(80, 'MHz'), amp_sp_bichro=1.0, att_sp_bichro=8.0, phase_sp_bichro=0.,
+        freq_sp=80e6, amp_sp=1.0, att_sp=8.0, phase_sp=0.,
+        use_bichro=False, freq_sp_bichro=80e6, amp_sp_bichro=1.0, att_sp_bichro=8.0, phase_sp_bichro=0.,
         id=0):
         # TODO: this doesn't add any noise right now.
         dds = self.dds_729_SP
@@ -753,11 +747,13 @@ class PulseSequence:
                 except ValueError:
                     continue
                 try:
-                    pv_value = self.p[c][v]
+                    pv_collection = self.p[c]
                 except KeyError:
-                    #TODO Ryan fix this - throw if a parameter isn't found
-                    #raise Exception("Failed to find parameter: " + value)
-                    continue
+                    continue # ignore, could be an unrelated class attribute
+                try:
+                    pv_value = pv_collection[v]
+                except KeyError:
+                    raise Exception("Failed to find parameter: " + value)
                 try:
                     pv_value = float(pv_value)
                 except:
@@ -799,8 +795,7 @@ class PulseSequence:
 
     def load_parameter_vault(self):
         # Grab parametervault params:
-        cxn = labrad.connect()
-        p = cxn.parametervault
+        import simulated_parameter_vault as p
         collections = p.get_collections()
         D = dict()
         for collection in collections:

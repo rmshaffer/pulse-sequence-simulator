@@ -1,7 +1,7 @@
 from artiq.experiment import *
 from artiq.coredevice.ad9910 import RAM_MODE_RAMPUP, RAM_DEST_ASF
 from artiq.coredevice.ad9910 import PHASE_MODE_TRACKING, PHASE_MODE_ABSOLUTE
-from subsequences.rabi_excitation import RabiExcitation
+from .rabi_excitation import RabiExcitation
 import numpy as np
 
 

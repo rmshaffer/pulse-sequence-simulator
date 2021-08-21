@@ -1,5 +1,5 @@
 from artiq.experiment import *
-from subsequences.optical_pumping import OpticalPumping
+from .optical_pumping import OpticalPumping
 
 class SidebandCooling:
     line_selection="SidebandCooling.line_selection"
