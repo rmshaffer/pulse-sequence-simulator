@@ -1,8 +1,7 @@
 # pulse-sequence-simulator
-Utilities for simulating ARTIQ pulse sequences for trapped-ion devices using IonSim.jl.
+Utilities for simulating [ARTIQ](https://m-labs.hk/experiment-control/artiq/) pulse sequences for trapped-ion devices using [IonSim.jl](https://www.ionsim.org/).
 
-In particular, this is designed to simulate the behavior of the ARTIQ pulse sequences used in the [Haeffner Lab at UC Berkeley](https://ions.berkeley.edu). These experimental pulse sequences can be found at:  
-https://github.com/HaeffnerLab/artiq-work-lattice
+In particular, the tools in this repo are designed to simulate the behavior of the ARTIQ pulse sequences which inherit from the [PulseSequence class](https://github.com/HaeffnerLab/artiq/blob/master/artiq/.pulse_sequence/pulse_sequence.py) developed in the [Haeffner Lab at UC Berkeley](https://ions.berkeley.edu). A variety of such experimental pulse sequences can be found in the [HaeffnerLab/artiq-work-lattice repo](https://github.com/HaeffnerLab/artiq-work-lattice).
 
 ## Installing via Docker (recommended)
 
