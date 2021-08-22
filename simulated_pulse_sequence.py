@@ -17,10 +17,12 @@ logger = logging.getLogger(__name__)
 def unitless(param):
     return param
 
+global_julia_simulation_function = None
+
 #
 # Entry point to trigger a simulation of a particular experiment
 #
-def run_simulation(file_path, class_, argument_values):
+def run_simulation(file_path, class_, argument_values, debug=False):
     try:
         # define a function to import a modified source file
         def modify_and_import(module_name, path, modification_func):
@@ -83,12 +85,44 @@ def run_simulation(file_path, class_, argument_values):
 
         # execute the simulated pulse sequence
         pulse_sequence = getattr(mod, class_)()
+        pulse_sequence.set_debug(debug)
         pulse_sequence.set_submission_arguments(argument_values)
         pulse_sequence.simulate()
 
         return pulse_sequence.data
     except:
         logger.error("Error simulating pulse sequence" + traceback.format_exc())
+
+#
+# Entry point to initialize the Julia simulation function object
+#
+def initialize_julia():
+    try:
+        # Check to see if a precompiled system image exists
+        path_to_sys_so = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sys.so")
+        if os.path.exists(path_to_sys_so):
+            from julia.api import LibJulia
+            api = LibJulia.load()
+            api.sysimage = path_to_sys_so
+            api.init_julia()
+
+        path_to_simulate_jl = os.path.join(os.path.dirname(os.path.abspath(__file__)), "simulate.jl")
+        from julia import Main
+        Main.include(path_to_simulate_jl)
+
+        global global_julia_simulation_function
+        global_julia_simulation_function = Main.simulate_with_ion_sim
+    except:
+        print("Error loading Julia file simulate.jl: " + traceback.format_exc())
+        raise
+
+    # Make a dummy call to the function to ensure everything is loaded
+    try:
+        global_julia_simulation_function({}, {}, 1, 0)
+    except:
+        pass
+
+    print("Successfully initialized Julia and IonSim.jl")
 
 class SimulatedDDSSwitch:
     def __init__(self, dds):
@@ -174,6 +208,7 @@ class PulseSequence:
         self.data = edict()
         self.scheduler = SimulationScheduler()
         self.rcg_tabs = dict()
+        self.debug = False
         
         self.grapher = None
         self.visualizer = None
@@ -189,6 +224,9 @@ class PulseSequence:
                                 datetime.now().strftime("%Y-%m-%d"), self.sequence_name)
         os.makedirs(self.dir, exist_ok=True)
         os.chdir(self.dir)
+
+    def set_debug(self, debug):
+        self.debug = debug
 
     def set_submission_arguments(self, submission_arguments):
         self.submission_arguments = submission_arguments
@@ -227,11 +265,12 @@ class PulseSequence:
         for k,v in self.scan_settings.items():
             self.parameter_dict["Scan." + k] = v
 
-        # write all the parameters to a file
-        filename = self.timestamp + "_params_" + scan_name + ".txt"
-        with open(filename, "w") as param_file:
-            self.write_line(param_file, str(self.parameter_dict))
-        print("Parameters written to " + os.path.join(self.dir, filename))
+        if self.debug:
+            # write all the parameters to a file
+            filename = self.timestamp + "_params_" + scan_name + ".txt"
+            with open(filename, "w") as param_file:
+                self.write_line(param_file, str(self.parameter_dict))
+            print("Parameters written to " + os.path.join(self.dir, filename))
 
     def report_pulse(self, dds, time_switched_on, time_switched_off):
         simulated_pulse = {
@@ -286,7 +325,7 @@ class PulseSequence:
 
     def simulate_with_ion_sim(self):
         try:
-            return self.julia_simulation_function(
+            return global_julia_simulation_function(
                 self.parameter_dict,
                 self.combined_laser_pulses,
                 self.num_ions,
@@ -305,22 +344,8 @@ class PulseSequence:
         self.num_ions = int(self.p.IonsOnCamera.ion_number)
 
         # Import the Julia simulation function
-        try:
-            # Check to see if a precompiled system image exists
-            path_to_sys_so = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sys.so")
-            if os.path.exists(path_to_sys_so):
-                from julia.api import LibJulia
-                api = LibJulia.load()
-                api.sysimage = path_to_sys_so
-                api.init_julia()
-
-            path_to_simulate_jl = os.path.join(os.path.dirname(os.path.abspath(__file__)), "simulate.jl")
-            from julia import Main
-            Main.include(path_to_simulate_jl)
-            self.julia_simulation_function = Main.simulate_with_ion_sim
-        except:
-            self.logger.error("Error loading Julia file simulate.jl: " + traceback.format_exc())
-            raise
+        if not global_julia_simulation_function:
+            initialize_julia()
         
         run_initially_complete = False
         for scan_name in PulseSequence.scan_params:
@@ -370,22 +395,27 @@ class PulseSequence:
                 current_sequence = getattr(self, scan_name)
                 current_sequence()
 
-                # Write the generated pulse sequences to a file.
-                filename = self.timestamp + "_pulses_" + scan_name + "_" + str(scan_idx) + ".txt"
-                with open(filename, "w") as pulses_file:
-                    self.write_line(pulses_file, json.dumps(self.simulated_pulses, sort_keys=True, indent=4))
-                print("Pulse sequence written to " + os.path.join(self.dir, filename))
+                if self.debug:
+                    # Write the generated pulse sequences to a file.
+                    filename = self.timestamp + "_pulses_" + scan_name + "_" + str(scan_idx) + ".txt"
+                    with open(filename, "w") as pulses_file:
+                        self.write_line(pulses_file, json.dumps(self.simulated_pulses, sort_keys=True, indent=4))
+                    print("Pulse sequence written to " + os.path.join(self.dir, filename))
 
                 # Post-process the pulses to combine single-pass and double-pass pulses
-                # into laser pulses, and also write these to a file.
+                # into laser pulses.
                 self.combine_laser_pulses()
-                filename = self.timestamp + "_lasers_" + scan_name + "_" + str(scan_idx) + ".txt"
-                with open(filename, "w") as lasers_file:
-                    self.write_line(lasers_file, json.dumps(self.combined_laser_pulses, sort_keys=True, indent=4))
-                print("Laser sequence written to " + os.path.join(self.dir, filename))
+
+                if self.debug:
+                    # Write the generated laser pulses to a file.
+                    filename = self.timestamp + "_lasers_" + scan_name + "_" + str(scan_idx) + ".txt"
+                    with open(filename, "w") as lasers_file:
+                        self.write_line(lasers_file, json.dumps(self.combined_laser_pulses, sort_keys=True, indent=4))
+                    print("Laser sequence written to " + os.path.join(self.dir, filename))
                 
                 # Call IonSim code to simulate the dynamics.
-                print("Calling IonSim with num_ions=" + str(self.num_ions) + ", " + self.scan_parameter_name + "=" + str(scan_point))
+                if self.debug:
+                    print("Calling IonSim with num_ions=" + str(self.num_ions) + ", " + self.scan_parameter_name + "=" + str(scan_point))
                 result_data = self.simulate_with_ion_sim()
                 
                 # Guess the plot range.
