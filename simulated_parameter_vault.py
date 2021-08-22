@@ -220,5 +220,9 @@ def get_parameter(path):
 
 def set_parameter(path, value):
     collection = path[0]
+    if collection not in get_collections():
+        raise Exception(f"collection {collection} does not exist")
     name = path[1]
+    if name not in get_parameter_names(collection):
+        raise Exception(f"parameter {name} does not exist in collection {collection}")
     parameter_vault[collection][name] = value
