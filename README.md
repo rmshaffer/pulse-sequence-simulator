@@ -62,4 +62,6 @@ That should be it. To test your installation, run the test script included in th
 ```
 python ./test_simulated_pulse_sequence.py
 ```
+> ⚠️ NOTE: The first time you run this command, it may take a **very long time** (30+ minutes) while Julia precompiles its packages. Go make some coffee and be patient. It will complete eventually. Subsequent runs should only take a minute or two. 
+
 If this completes with no errors and outputs some results, you should be good to go.
