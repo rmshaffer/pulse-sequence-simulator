@@ -61,8 +61,11 @@ class EnergyLevel_CA_ion(EnergyLevel):
     '''
     
     def lande_factor(self, S, L, J):
-        g_factor_S = 2.00225664 #Eur Phys JD 25 113-125
-        g_factor_D = 1.2003340  #PRL 102, 023002 (2009)
+        # NOTE: For simulation with IonSim, must use approximate values here
+        # because IonSim uses the approximate values. When running on a real
+        # experiment, the empirical values should be used.
+        g_factor_S = 2.0 # empirical value 2.00225664, Eur Phys JD 25 113-125
+        g_factor_D = 1.2 # empirical value 1.2003340, PRL 102, 023002 (2009)
         if S == Fraction('1/2') and L == Fraction('0') and J == Fraction('1/2'):
             g = g_factor_S
         elif S == Fraction('1/2') and L == Fraction('2') and J == Fraction('5/2'):
