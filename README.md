@@ -5,8 +5,6 @@ In particular, the tools in this repo are designed to simulate the behavior of t
 
 ## Installing via Docker (recommended)
 
-The Python and Julia prerequisites for this repo are packaged into a Docker image here:  
-https://hub.docker.com/r/rmshaffer/pulse-sequence-simulator
 
 Installing via Docker is much easier than manual installation, particularly because Docker is a fully containerized environment, which means you don't have to worry about affecting any other Python or Julia installations you already have on your machine.
 
@@ -15,16 +13,43 @@ First, install Docker Desktop, if you don't already have it:
 https://www.docker.com/products/docker-desktop
 
 ### 2. Launch an instance of the Docker image
-Then, from a terminal, run the following commands to launch an instance of the Docker image:
+
+Use either option (a) or (b) below.
+
+#### (a) *(linux/amd64 only)* Launch an instance of the published Docker image
+For linux/amd64, Python and Julia prerequisites for this repo are packaged into a Docker image here:  
+https://hub.docker.com/r/rmshaffer/pulse-sequence-simulator
+
+From a terminal, run the following commands to download the image and launch an instance of the Docker image:
 ```
 docker pull rmshaffer/pulse-sequence-simulator
 docker run -it -p 8888:8888 rmshaffer/pulse-sequence-simulator
 ```
 
-This should bring you to a bash shell inside your container, something like:  
-`(artiq) root@6ee27adf04cf:/repo#`
+#### (b) *(any platform)* Build and launch and instance of the Docker image
+For any other platform, or if the published image does not work, you'll need to build the image yourself.
+
+Clone this repo and `cd` into the created directory:
+```
+git clone https://github.com/rmshaffer/pulse-sequence-simulator
+cd pulse-sequence-simulator
+```
+
+Build the `Dockerfile` and tag it as `pulse-sequence-simulator`:
+```
+docker build . -t pulse-sequence-simulator
+```
+> ⚠️ NOTE: This will take a long time, up to an hour or more depending on your machine. Be patient.
+
+Finally, launch an instance of the Docker image you just created:
+```
+docker run -it -p 8888:8888 pulse-sequence-simulator
+```
 
 ### 3. Launch Jupyter Notebook from inside the container
+The above should bring you to a bash shell inside your container, something like:  
+`(artiq) root@6ee27adf04cf:/repo#`
+
 Now, from that bash shell, simply run this command to launch a Jupyter Notebook server:
 ```
 jupyter notebook --ip 0.0.0.0 --port 8888 --no-browser --allow-root
