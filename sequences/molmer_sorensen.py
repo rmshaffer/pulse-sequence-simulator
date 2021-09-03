@@ -77,6 +77,7 @@ class MolmerSorensenGate(PulseSequence):
     PulseSequence.scan_params.update(
         MolmerSorensen=[
             ("Molmer-Sorensen", ("MolmerSorensen.duration", 0., 400*us, 20, "us")),
+            ("Molmer-Sorensen", ("MolmerSorensen.detuning", -10*kHz, 10*kHz, 20, "kHz")),
             ("Molmer-Sorensen", ("MolmerSorensen.amplitude", 0., 1., 20)),
             ("Molmer-Sorensen", ("MolmerSorensen.amplitude_ion2", 0., 1., 20)),
             ("Molmer-Sorensen", ("MolmerSorensen.detuning_carrier_1", -10*kHz, 10*kHz, 20, "kHz")),
@@ -116,6 +117,7 @@ class MolmerSorensenGate(PulseSequence):
     @kernel
     def set_subsequence_ms(self):
         self.ms.duration = self.get_variable_parameter("MolmerSorensen_duration")
+        self.ms.detuning = self.get_variable_parameter("MolmerSorensen_detuning")
         self.ms.amp = self.get_variable_parameter("MolmerSorensen_amplitude")
         self.ms.amp_ion2 = self.get_variable_parameter("MolmerSorensen_amplitude_ion2")
         self.ms.detuning_carrier_1 = self.get_variable_parameter("MolmerSorensen_detuning_carrier_1")
