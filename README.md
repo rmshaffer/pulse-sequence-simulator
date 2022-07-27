@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/398589495.svg)](https://zenodo.org/badge/latestdoi/398589495)
+
 # pulse-sequence-simulator
 Utilities for simulating [ARTIQ](https://m-labs.hk/experiment-control/artiq/) pulse sequences for trapped-ion devices using [IonSim.jl](https://www.ionsim.org/).
 
